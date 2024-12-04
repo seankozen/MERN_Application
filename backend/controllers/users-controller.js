@@ -1,25 +1,24 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const router = express.Router();
-const { v4: uuidv4 } = require("uuid");
-const uuid = uuidv4();
 
 const HttpError = require("../models/http-error");
 const { validationResult } = require("express-validator");
 const User = require('../models/user');
 
 
-let DUMMY_USERS = [
-  {
-    id: "u1",
-    name: "Sean Kozen",
-    email: "sgkozen@gmail.com",
-    password: "thisIsATest",
-  },
-];
+const getUsers = async (req, res, next) => {
+  let users;
 
-const getUsers = (req, res, next) => {
-  res.json({ users: DUMMY_USERS });
+  try {
+    users = await User.find({}, '-password')
+  } catch(err) {
+    const error = new HttpError(
+      "User not found!", 500
+    );
+    return next(error);
+  }
+  res.json({ users: users.map(user => user.toObject( {getters: true}) )});
 };
 
 const signup = async (req, res, next) => {
@@ -29,7 +28,7 @@ const signup = async (req, res, next) => {
     new HttpError('Invalid inputs passed, please check your data.', 422)
     );
   }
-  const { name, email, password, places } = req.body;
+  const { name, email, password } = req.body;
 
   let existingUser;
 
@@ -37,7 +36,7 @@ const signup = async (req, res, next) => {
     existingUser = await User.findOne({email: email})
   } catch(err) {
     const error = new HttpError(
-      "Signup failed, please ytry again later", 500
+      "Signup failed, please try again later", 500
     );
     return next(error);
   }
@@ -55,7 +54,7 @@ const signup = async (req, res, next) => {
     email,
     image: 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.facebook.com%2FSesameOscartheGrouch%2F&psig=AOvVaw0Xt6t2ZKicusiniXAa74-p&ust=1733289301726000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCKDVipbsiooDFQAAAAAdAAAAABAE',
     password, 
-    places,
+    places: []
   });
 
   try {
@@ -67,16 +66,28 @@ const signup = async (req, res, next) => {
   res.status(201).json({ user: createdUser.toObject({getters: true}) });
 };
 
-const login = (req, res, next) => {
+const login = async(req, res, next) => {
   const { email, password } = req.body;
 
-  const identifiedUser = DUMMY_USERS.find((u) => u.email === email);
-  if (!identifiedUser || identifiedUser.password !== password) {
-    throw new HttpError(
-      "Could not identify user, credentials seem to be wrong.",
+  let existingUser;
+
+  try{
+    existingUser = await User.findOne({email: email})
+  } catch(err) {
+    const error = new HttpError(
+      "Login failed, please try again later", 500
+    );
+    return next(error);
+  }
+  
+  if(!existingUser || existingUser.password !== password) {
+    const error = new HttpError(
+      "Invalid credentials, could not log you in.",
       401
     );
+    return next(error);
   }
+ 
 
   res.json({ message: "Logged in!" });
 };
