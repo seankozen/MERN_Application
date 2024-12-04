@@ -1,11 +1,48 @@
-import React from 'react'
-import UsersList from '../components/UsersList'
+import React, { useEffect, useState } from "react";
+import UsersList from "../components/UsersList";
+import ErrorModal from "../../shared/components/UIElements/ErrorModal";
+import LoadingSpinner from "../../shared/components/UIElements/LoadingSpinner";
 
 function Users() {
-  const USERS = [{id: "u1", name: 'Max Schwarz', image: "data:image/jpeg;base64,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"  }];
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState();
+  const [loadedUsers, setLoadedUsers] = useState();
+
+  useEffect(() => {
+    const sendRequest = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch("http://localhost:5000/api/users");
+        const responseData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(responseData.message);
+        }
+
+        setLoadedUsers(responseData.users);
+      } catch (err) {
+        setError(err.message);
+      }
+      setIsLoading(false);
+    };
+    sendRequest();
+  }, []);
+
+  const errorHandler = () => {
+    setError(null);
+  };
+
   return (
-    <UsersList items ={USERS}/>
-  )
+    <>
+      <ErrorModal error={error} onClear={errorHandler} />
+      {isLoading && (
+        <div className="center">
+          <LoadingSpinner />
+        </div>
+      )}
+      {!isLoading && loadedUsers && <UsersList items={loadedUsers} />}
+    </>
+  );
 }
 
-export default Users
+export default Users;
