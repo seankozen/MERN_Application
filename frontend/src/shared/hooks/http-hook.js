@@ -4,8 +4,7 @@ export const useHttpClient = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState();
 
-    const activeHttpRequests = useRef([]);
-
+  const activeHttpRequests = useRef([]);
 
   const sendRequest = useCallback(
     async (url, method = "GET", body = null, headers = {}) => {
@@ -19,22 +18,25 @@ export const useHttpClient = () => {
           method,
           body,
           headers,
-          signal: httpAbortCtrll.signal
+          signal: httpAbortCtrll.signal,
         });
 
         const responseData = await response.json();
 
+        activeHttpRequests.current = activeHttpRequests.current.filter(
+          (reqCtrl) => reqCtrl !== httpAbortCtrll
+        );
+
         if (!response.ok) {
           throw new Error(responseData.message);
         }
+        setIsLoading(false);
         return responseData;
       } catch (err) {
         setError(err.message);
         setIsLoading(false);
         throw err;
       }
-
-      
     },
     []
   );
@@ -45,10 +47,9 @@ export const useHttpClient = () => {
 
   useEffect(() => {
     return () => {
-        activeHttpRequests.current.forEach(abortCtrl => abortCtrl.abort());
+      activeHttpRequests.current.forEach((abortCtrl) => abortCtrl.abort());
     };
   }, []);
-
 
   return { isLoading, error, sendRequest, clearError };
 };
