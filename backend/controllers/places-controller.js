@@ -1,6 +1,5 @@
+const fs = require("fs");
 const HttpError = require("../models/http-error");
-const { v4: uuidv4 } = require("uuid");
-const uuid = uuidv4();
 const { validationResult } = require("express-validator");
 const getCoordsForAddress = require("../util/location");
 const Place = require("../models/place");
@@ -36,7 +35,7 @@ const getPlacesByUserId = async (req, res, next) => {
   //let places;
   let userWithPlaces;
   try {
-    userWithPlaces = await User.findById(userId).populate('places');
+    userWithPlaces = await User.findById(userId).populate("places");
   } catch (err) {
     const error = new HttpError(
       "Fetching places failed, please try again later.",
@@ -46,17 +45,18 @@ const getPlacesByUserId = async (req, res, next) => {
   }
 
   //if (!places || places.length === 0) {
-    if (!userWithPlaces || userWithPlaces.places.length === 0) {
+  if (!userWithPlaces || userWithPlaces.places.length === 0) {
     return next(
       new HttpError("Could not find places for the provided user id.", 404)
     );
   }
 
-  
-    res.json({ places: userWithPlaces.places.map(place => place.toObject({ getters: true })) });
-  
+  res.json({
+    places: userWithPlaces.places.map((place) =>
+      place.toObject({ getters: true })
+    ),
+  });
 };
-
 
 const createPlace = async (req, res, next) => {
   const errors = validationResult(req);
@@ -82,9 +82,8 @@ const createPlace = async (req, res, next) => {
     description,
     address,
     location: coordinates,
-    image:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Sagrada_Familia_1-4-24.jpg/330px-Sagrada_Familia_1-4-24.jpg",
-    creator
+    image: req.file.path,
+    creator,
   });
 
   let user;
@@ -161,7 +160,7 @@ const deletePlace = async (req, res, next) => {
   let place;
 
   try {
-    place = await Place.findById(placeId).populate('creator');
+    place = await Place.findById(placeId).populate("creator");
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not delete place.",
@@ -170,20 +169,18 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
-  if(!place) {
-    const error = new HttpError(
-      "Could not find the place for this id.",
-      404
-    );
+  if (!place) {
+    const error = new HttpError("Could not find the place for this id.", 404);
     return next(error);
   }
 
+  const imagePath = place.image;
+
   try {
-    
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await place.deleteOne({ session: sess });
-    place.creator.places.pull(place)
+    place.creator.places.pull(place);
     await place.creator.save({ session: sess });
     await sess.commitTransaction();
   } catch (err) {
@@ -193,6 +190,10 @@ const deletePlace = async (req, res, next) => {
     );
     return next(error);
   }
+
+  fs.unlink(imagePath, (err) => {
+    console.log(err);
+  });
 
   res.status(200).json({ message: "Place deleted." });
 };

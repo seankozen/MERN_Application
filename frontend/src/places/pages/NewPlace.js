@@ -6,6 +6,7 @@ import Input from "../../shared/components/FormElements/Input";
 import Button from "../../shared/components/FormElements/Button";
 import ErrorModal from "../../shared/components/UIElements/ErrorModal";
 import LoadingSpinner from "../../shared/components/UIElements/LoadingSpinner";
+import ImageUpload from "../../shared/components/FormElements/ImageUpload";
 import {
   VALIDATOR_MINLENGTH,
   VALIDATOR_REQUIRE,
@@ -32,6 +33,10 @@ function NewPlace() {
         value: "",
         isValid: false,
       },
+      image:{
+        value: null,
+        isValid: false,
+      }
     },
     false
   );
@@ -41,18 +46,14 @@ function NewPlace() {
   const placeSubmitHandler = async (event) => {
     event.preventDefault();
     try {
-      await sendRequest(
-        "http://localhost:5000/api/places",
-        "POST",
-        JSON.stringify({
-          title: formState.inputs.title.value,
-          description: formState.inputs.description.value,
-          address: formState.inputs.address.value,
-          creator: auth.userId,
-        }),
-        { "Content-Type": "application/json" }
-      );
-      history.push('/');
+      const formData = new FormData();
+      formData.append("title", formState.inputs.title.value);
+      formData.append("description", formState.inputs.description.value);
+      formData.append("address", formState.inputs.address.value);
+      formData.append("creator", auth.userId);
+      formData.append("image", formState.inputs.image.value);
+      await sendRequest("http://localhost:5000/api/places", "POST", formData);
+      history.push("/");
     } catch (err) {}
   };
 
@@ -86,6 +87,7 @@ function NewPlace() {
           errorText="Please enter a valid address."
           onInput={inputHandler}
         />
+        <ImageUpload id= "image" onInput={inputHandler} errorText="Please provide an image."/>
         <Button type="submit" disabled={!formState.isValid}>
           ADD PLACE
         </Button>
